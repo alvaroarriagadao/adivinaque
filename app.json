@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Adivina qué",
-    "slug": "Adivina qué",
+    "slug": "adivinaque-voxph4jsjecxdvew0lkzk",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,6 +23,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "09da7685-f8d7-4b89-b9cd-9da26b1682ab"
+      }
+    },
+    "owner": "alvaroarriagada"
   }
 }
