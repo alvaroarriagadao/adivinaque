@@ -11,6 +11,7 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
   const { 
     players, jetIndex, resetGame, currentConcept, 
     currentImages, setJetSelection, refreshImages, changeConcept, hasChangedImages,
+    hasChangedConcept,
     turnCount, totalTurns
   } = useGameStore();
   
@@ -118,6 +119,8 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
             ))}
           </View>
 
+          <View style={{ flex: 1 }} /> 
+
           <Animated.View 
             style={styles.actionButtons}
             layout={Layout.duration(300)}
@@ -145,8 +148,14 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
                     {hasChangedImages ? "Ya cambiaste las imágenes" : "Ver otras imágenes"}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.button} onPress={handleChangeConcept}>
-                    <Text style={styles.buttonText}>Cambiar concepto</Text>
+                <TouchableOpacity 
+                  style={[styles.button, styles.changeConceptButton, hasChangedConcept && styles.changeConceptButtonDisabled]} 
+                  onPress={handleChangeConcept}
+                  disabled={hasChangedConcept}
+                >
+                    <Text style={[styles.buttonText, styles.changeConceptButtonText, hasChangedConcept && styles.changeConceptButtonTextDisabled]}>
+                      {hasChangedConcept ? "Ya cambiaste el concepto" : "Cambiar concepto"}
+                    </Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -164,7 +173,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 80, // Reducido para mejor spacing
     paddingBottom: 20,
-    justifyContent: 'space-between'
   },
   headerSection: {
     alignItems: 'center',
@@ -180,7 +188,7 @@ const styles = StyleSheet.create({
   loadingText: { color: 'white', fontSize: 22, fontFamily: 'LuckiestGuy-Regular' },
   backButton: { 
     position: 'absolute', 
-    top: 20, // Ajustado para mejor posición
+    top: 45, // Ajustado para mejor posición
     left: 20, 
     zIndex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -190,7 +198,7 @@ const styles = StyleSheet.create({
   },
   audioButton: { 
     position: 'absolute', 
-    top: 20, // Ajustado para mejor posición
+    top: 45, // Ajustado para mejor posición
     right: 20, 
     zIndex: 1,
   },
@@ -208,7 +216,7 @@ const styles = StyleSheet.create({
   },
   question: { 
     fontFamily: 'Poppins-Regular', 
-    fontSize: 18, 
+    fontSize: 16, 
     color: 'rgba(255, 255, 255, 0.9)', 
     textAlign: 'center' 
   },
@@ -222,8 +230,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap', 
     justifyContent: 'space-between',
     alignItems: 'center',
-    flex: 1,
-    paddingVertical: 20,
+    marginTop: 3,
   },
   imageWrapper: {
     width: '48%',
@@ -254,22 +261,22 @@ const styles = StyleSheet.create({
     paddingBottom: 10, // Espacio adicional del bottom
   },
   button: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 25,
     paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   buttonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   buttonText: { 
-    color: '#0A4B8F', 
+    color: '#5D5FEF', 
     fontSize: 18, 
     fontFamily: 'LuckiestGuy-Regular'
   },
   buttonTextDisabled: {
-    color: '#666',
+    color: 'rgba(93, 95, 239, 0.4)',
   },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -285,6 +292,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontFamily: 'LuckiestGuy-Regular',
+  },
+  changeConceptButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  changeConceptButtonDisabled: {
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'transparent',
+  },
+  changeConceptButtonText: {
+    color: 'white',
+  },
+  changeConceptButtonTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   selectedImage: {
     borderColor: '#FDB813',

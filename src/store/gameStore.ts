@@ -33,6 +33,7 @@ interface GameState {
   
   // Control de cambios de imagen
   hasChangedImages: boolean;
+  hasChangedConcept: boolean;
   
   // Acciones
   initializeAssets: () => Promise<void>;
@@ -62,6 +63,7 @@ const initialState = {
   jetSelection: null,
   guesses: [],
   hasChangedImages: false,
+  hasChangedConcept: false,
 };
 
 export const useGameStore = create<GameState>((set, get) => {
@@ -119,6 +121,7 @@ export const useGameStore = create<GameState>((set, get) => {
       currentImages: formattedImages, // <-- USAR IMÁGENES FORMATEADAS
       isLoading: false,
       hasChangedImages: false,
+      hasChangedConcept: false,
       jetSelection: null,
       guesses: [],
     });
@@ -164,19 +167,25 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     startGame: async () => {
-      const { players } = get();
-      if (players.length < 2) return;
+      const { players, allConcepts } = get();
+      if (players.length < 2 || allConcepts.length === 0) return;
 
+      set({ isLoading: true }); // Activar el estado de carga
+      
       const roundsPerPlayer = players.length >= 6 ? 2 : 3;
+      
+      // La preparación de imágenes ocurre primero
+      const newConcept = getNewRandomConcept();
+      await prepareConceptImages(newConcept);
+      
+      // Una vez que las imágenes están listas, se transiciona
       set({
         gamePhase: 'turn_selection',
         jetIndex: 0,
         turnCount: 1,
         totalTurns: players.length * roundsPerPlayer,
+        isLoading: false, // Desactivar la carga al final
       });
-
-      const newConcept = getNewRandomConcept();
-      await prepareConceptImages(newConcept);
     },
 
     setJetSelection: (image: any) => {
@@ -222,9 +231,10 @@ export const useGameStore = create<GameState>((set, get) => {
 
     nextTurn: async () => {
       const { turnCount, totalTurns, players, jetIndex } = get();
+      set({ isLoading: true });
 
       if (turnCount >= totalTurns) {
-        set({ gamePhase: 'final_results' });
+        set({ gamePhase: 'final_results', isLoading: false });
         return;
       }
 
@@ -236,6 +246,7 @@ export const useGameStore = create<GameState>((set, get) => {
       
       const newConcept = getNewRandomConcept();
       await prepareConceptImages(newConcept);
+      set({ isLoading: false });
     },
 
     resetGame: (keepPlayers = false) => {
@@ -252,11 +263,15 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     playAgain: async () => {
-      const { players } = get();
-      if (players.length < 2) return;
+      const { players, allConcepts } = get();
+      if (players.length < 2 || allConcepts.length === 0) return;
 
+      set({ isLoading: true });
       const resetedPlayers = players.map(p => ({ ...p, score: 0 }));
       const roundsPerPlayer = players.length >= 6 ? 2 : 3;
+      
+      const newConcept = getNewRandomConcept();
+      await prepareConceptImages(newConcept);
       
       set({
         players: resetedPlayers,
@@ -264,35 +279,32 @@ export const useGameStore = create<GameState>((set, get) => {
         jetIndex: 0,
         turnCount: 1,
         totalTurns: players.length * roundsPerPlayer,
+        isLoading: false,
       });
-
-      const newConcept = getNewRandomConcept();
-      await prepareConceptImages(newConcept);
     },
 
     refreshImages: async () => {
       const { currentConcept, hasChangedImages, conceptImageCache, currentImages } = get();
       if (!currentConcept || hasChangedImages) return;
-
+    
       const imagesForConcept = conceptImageCache[currentConcept] || [];
-      if (imagesForConcept.length <= 4) {
-        console.warn("No hay suficientes imágenes en el pool para refrescar.");
-        return;
-      }
-      
-      // Asegurarse de no repetir las mismas 4 imágenes exactas
+      const currentImageUris = new Set(currentImages.map(img => img.uri));
+    
+      // Filtrar el pool para excluir las imágenes actuales
+      const availableImages = imagesForConcept.filter(url => !currentImageUris.has(url));
+    
       let newImageUrls;
-      let attempts = 0;
-      do {
+      // Si hay suficientes imágenes nuevas, tomarlas de ahí. Si no, usar todo el pool barajado.
+      if (availableImages.length >= 4) {
+        console.log(`Refrescando con ${availableImages.length} imágenes disponibles.`);
+        newImageUrls = shuffleAndPick(availableImages, 4);
+      } else {
+        console.warn(`No hay suficientes imágenes nuevas. Usando el pool completo de ${imagesForConcept.length} como fallback.`);
         newImageUrls = shuffleAndPick(imagesForConcept, 4);
-        attempts++;
-      } while (
-        attempts < 10 &&
-        newImageUrls.every(url => currentImages.some(img => img.uri === url))
-      );
-
+      }
+    
       const formattedImages = newImageUrls.map(url => ({ uri: url }));
-
+    
       set({ 
         currentImages: formattedImages,
         hasChangedImages: true 
@@ -300,8 +312,14 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     changeConcept: async () => {
+      const { hasChangedConcept } = get();
+      if (hasChangedConcept) return;
+
       const newConcept = getNewRandomConcept();
+      // Se prepara el nuevo concepto. Esto resetea hasChangedConcept a false.
       await prepareConceptImages(newConcept);
+      // Se setea inmediatamente a true para que no se pueda volver a usar en este turno.
+      set({ hasChangedConcept: true });
     },
   };
 }); 

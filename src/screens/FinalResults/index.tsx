@@ -18,6 +18,9 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
   const podium = sortedPlayers.slice(0, 3);
   const rest = sortedPlayers.slice(3);
 
+  // Se crea un array de puntajes únicos para determinar el rango correcto.
+  const podiumScores = [...new Set(sortedPlayers.map(p => p.score))];
+
   const titleText = winners.length > 1 ? "🎉 ¡Es un Empate! 🎉" : "🏆 ¡Juego Terminado! 🏆";
   const subtitleText = "🎊 Resultados Finales 🎊";
 
@@ -69,11 +72,12 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
         <View style={styles.podiumContainer}>
             {podium.map((player, index) => {
               const isWinner = winners.some(w => w.id === player.id);
+              const rank = podiumScores.indexOf(player.score); // Se calcula el rango real
               return (
                 <Animated.View key={player.id} entering={FadeInUp.delay(600 + index * 200).duration(800)}>
                     <View key={player.id} style={[styles.podiumItem, isWinner && styles.winnerPodium]}>
-                        <Text style={styles.podiumEmoji}>{getPodiumEmoji(index)}</Text>
-                        <Text style={styles.podiumName}>{index + 1}. {player.name}</Text>
+                        <Text style={styles.podiumEmoji}>{getPodiumEmoji(rank)}</Text>
+                        <Text style={styles.podiumName}>{rank + 1}. {player.name}</Text>
                         <Text style={styles.podiumScore}>{player.score} pts</Text>
                     </View>
                 </Animated.View>
@@ -84,12 +88,15 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
         <FlatList
           data={rest}
           keyExtractor={item => item.id}
-          renderItem={({ item, index }) => (
-            <View style={styles.playerRow}>
-              <Text style={styles.playerName}>{index + 4}. {item.name}</Text>
-              <Text style={styles.playerScore}>{item.score} pts</Text>
-            </View>
-          )}
+          renderItem={({ item, index }) => {
+            const rank = podiumScores.indexOf(item.score); // Rango para el resto de jugadores
+            return (
+              <View style={styles.playerRow}>
+                <Text style={styles.playerName}>{rank + 1}. {item.name}</Text>
+                <Text style={styles.playerScore}>{item.score} pts</Text>
+              </View>
+            )
+          }}
           style={{width: '100%', marginTop: 20}}
         />
 
@@ -115,7 +122,7 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
     exitButton: { 
       position: 'absolute', 
-      top: 20, // Ajustado para Android
+      top: 45, // Ajustado para Android
       left: 20, 
       zIndex: 2,
       backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -134,7 +141,7 @@ const styles = StyleSheet.create({
       padding: 20, 
       alignItems: 'center', 
       zIndex: 1, 
-      paddingTop: 60, // Reducido para Android
+      paddingTop: 80,
       paddingBottom: 20, // Espacio adicional para Android
     },
     title: { 

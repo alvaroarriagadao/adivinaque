@@ -79,7 +79,7 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
         <View style={styles.content}>
           <Animated.View style={[styles.titleContainer, animatedTitleStyle]}>
             <Text style={styles.title}>¡ADIVINA QUÉ!</Text>
-            <Text style={styles.subtitle}>¿Conoces bien a tus amigos?</Text>
+            <Text style={styles.subtitle}>¿Conoces bien a tus amig@s?</Text>
           </Animated.View>
           
           <LottieView

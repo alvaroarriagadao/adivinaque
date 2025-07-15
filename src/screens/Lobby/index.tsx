@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator } from 'react-native';
 import { useGameStore } from '../../store/gameStore';
 import { Feather } from '@expo/vector-icons';
 import Animated, { Layout, Easing, FadeInUp, FadeOutDown } from 'react-native-reanimated';
 import SafeAreaWrapper from '../../components/SafeAreaWrapper';
 
 const LobbyScreen = ({ navigation }: { navigation: any }) => {
-  const { players, addPlayer, removePlayer, startGame, gamePhase } = useGameStore();
+  const { players, addPlayer, removePlayer, startGame, gamePhase, isLoading } = useGameStore();
   const [playerName, setPlayerName] = useState('');
 
   useEffect(() => {
@@ -37,6 +37,17 @@ const LobbyScreen = ({ navigation }: { navigation: any }) => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={isLoading}
+        >
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Preparando la partida...</Text>
+          </View>
+        </Modal>
+
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Home')}>
             <Feather name="home" size={28} color="white" />
@@ -201,6 +212,18 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontFamily: 'LuckiestGuy-Regular',
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 15,
+    color: 'white',
+    fontSize: 18,
+    fontFamily: 'Poppins-Bold',
   },
 });
 

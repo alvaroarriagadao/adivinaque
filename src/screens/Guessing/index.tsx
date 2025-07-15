@@ -38,17 +38,21 @@ const GuessingScreen = () => {
   const totalRounds = Math.ceil(totalTurns / players.length);
 
   return (
-    <SafeAreaWrapper backgroundColor="#5D5FEF">
+    <SafeAreaWrapper backgroundColor="#2C3E50">
       <View style={styles.container}>
         <View style={styles.audioButton}>
           <AudioToggle />
         </View>
         
-        <Text style={styles.roundIndicator}>Ronda {currentRound} de {totalRounds}</Text>
-        <Text style={styles.title}>Turno de <Text style={{color: '#FDB813'}}>{currentGuesser.name}</Text></Text>
-        <Text style={styles.question}>
-          Adivina qué <Text style={styles.conceptName}>{formatConceptName(currentConcept)}</Text> eligió <Text style={{color: '#FDB813'}}>{jet.name}</Text>
-        </Text>
+        <View style={styles.headerSection}>
+          <Text style={styles.roundIndicator}>Ronda {currentRound} de {totalRounds}</Text>
+          <Text style={styles.title}>Turno de <Text style={{color: '#FDB813'}}>{currentGuesser.name}</Text></Text>
+          <View style={styles.questionContainer}>
+            <Text style={styles.question}>
+              Adivina qué <Text style={styles.conceptName}>{formatConceptName(currentConcept)}</Text> eligió <Text style={{color: '#FDB813'}}>{jet.name}</Text>
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.imageGrid}>
           {currentImages.map((img, index) => (
@@ -62,6 +66,8 @@ const GuessingScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
+        
+        <View style={{flex: 1}} />
 
         {selectedImage && (
           <View style={styles.actionButtons}>
@@ -78,16 +84,19 @@ const GuessingScreen = () => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 20, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    paddingTop: 40, // Espacio adicional para Android
+    paddingHorizontal: 20,
+    paddingTop: 80,
+    paddingBottom: 20,
   },
   audioButton: { 
     position: 'absolute', 
-    top: 20, // Ajustado para Android
+    top: 45,
     right: 20, 
     zIndex: 1,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   roundIndicator: {
     fontFamily: 'Poppins-Regular',
@@ -105,23 +114,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
   },
+  questionContainer: {
+    minHeight: 80, // Altura mínima para evitar saltos de layout
+    justifyContent: 'center',
+  },
   question: {
     fontFamily: 'Poppins-Regular',
     fontSize: 20,
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   conceptName: {
     fontFamily: 'LuckiestGuy-Regular',
     fontSize: 22,
     color: '#FDB813',
   },
-  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: '100%' },
+  imageGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
   imageContainer: {
-    width: '45%',
+    width: '48%',
     aspectRatio: 1,
-    margin: '2.5%',
+    marginBottom: 12,
     borderRadius: 15,
     backgroundColor: 'white',
     shadowColor: '#000',
@@ -132,23 +151,27 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: 'transparent',
   },
-  image: { width: '100%', height: '100%', borderRadius: 15 },
+  image: { 
+    width: '100%', 
+    height: '100%', 
+    borderRadius: 12,
+    resizeMode: 'cover'
+  },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(76, 175, 80, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 15,
+    borderRadius: 12,
   },
   selectedImage: {
     borderColor: '#FDB813',
+    borderWidth: 4,
     transform: [{ scale: 1.05 }],
   },
   actionButtons: {
-    position: 'absolute',
-    bottom: 40,
     width: '100%',
-    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   button: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
