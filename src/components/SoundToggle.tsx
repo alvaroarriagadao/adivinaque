@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Platform } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Feather } from '@expo/vector-icons';
 import { useSettingsStore } from '../store/settingsStore';
@@ -17,7 +17,7 @@ const SoundToggle = () => {
     bottomSheetModalRef.current?.dismiss();
   }, []);
 
-  const snapPoints = ['30%'];
+  const snapPoints = Platform.OS === 'android' ? ['50%'] : ['30%'];
 
   return (
     <>
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: Platform.OS === 'android' ? 60 : 24,
   },
   modalTitle: {
     fontFamily: 'Poppins-Bold',
@@ -110,9 +110,9 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   closeButton: {
-    marginTop: 24,
+    marginTop: Platform.OS === 'android' ? 80 : 24,
     backgroundColor: '#5D5FEF',
-    paddingVertical: 12,
+    paddingVertical: Platform.OS === 'android' ? 16 : 12,
     paddingHorizontal: 24,
     borderRadius: 20,
     alignItems: 'center',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 
 interface AnimatedButtonProps {
@@ -39,11 +39,14 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 25,
-    paddingVertical: 15,
+    paddingVertical: Platform.OS === 'android' ? 12 : 15,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: Platform.OS === 'android' ? 8 : 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -51,7 +54,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: 'Poppins-Bold',
     color: '#0A4B8F',
-    fontSize: 20,
+    fontSize: Platform.OS === 'android' ? 18 : 20,
   },
 });
 

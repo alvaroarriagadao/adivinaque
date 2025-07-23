@@ -1,10 +1,30 @@
 import { create } from 'zustand';
 import { fetchConceptNames, fetchImageUrlsForConcept } from '../services/firebaseService';
 
+// Paleta de colores para jugadores - máxima diferenciación visual
+export const PLAYER_COLORS = [
+  '#DC2626', // Rojo terracota
+  '#3B82F6', // Azul cielo
+  '#10B981', // Verde esmeralda
+  '#F59E0B', // Amarillo dorado
+  '#8B5CF6', // Púrpura
+  '#F97316', // Naranja
+  '#EC4899', // Rosa
+  '#6366F1', // Índigo
+  '#14B8A6', // Teal
+  '#84CC16', // Verde lima
+  '#EF4444', // Rojo brillante
+  '#06B6D4', // Cian
+  '#F43F5E', // Rose
+  '#8B5A2B', // Marrón
+  '#9F1239', // Rojo vino
+];
+
 export interface Player {
   id: string;
   name: string;
   score: number;
+  color: string; // Color asignado al jugador
 }
 
 export interface Guess {
@@ -39,6 +59,7 @@ interface GameState {
   initializeAssets: () => Promise<void>;
   addPlayer: (name: string) => void;
   removePlayer: (id: string) => void;
+  updatePlayerColor: (playerId: string, color: string) => void;
   startGame: () => Promise<void>;
   setJetSelection: (image: any) => void;
   addGuess: (playerId: string, image: any) => void;
@@ -158,12 +179,33 @@ export const useGameStore = create<GameState>((set, get) => {
 
     addPlayer: (name) => {
       if (get().players.length >= 10) return;
-      const newPlayer: Player = { id: `player-${Date.now()}`, name, score: 0 };
+      
+      // Obtener colores ya asignados para evitar duplicados
+      const usedColors = get().players.map(p => p.color);
+      
+      // Filtrar colores disponibles (no usados)
+      const availableColors = PLAYER_COLORS.filter(color => !usedColors.includes(color));
+      
+      // Si no hay colores disponibles, usar todos los colores
+      const colorPool = availableColors.length > 0 ? availableColors : PLAYER_COLORS;
+      
+      // Seleccionar color aleatorio
+      const randomColor = colorPool[Math.floor(Math.random() * colorPool.length)];
+      
+      const newPlayer: Player = { id: `player-${Date.now()}`, name, score: 0, color: randomColor };
       set((state) => ({ players: [...state.players, newPlayer] }));
     },
 
     removePlayer: (id) => {
       set((state) => ({ players: state.players.filter((p) => p.id !== id) }));
+    },
+
+    updatePlayerColor: (playerId: string, color: string) => {
+      set((state) => ({
+        players: state.players.map(player =>
+          player.id === playerId ? { ...player, color } : player
+        )
+      }));
     },
 
     startGame: async () => {
@@ -189,8 +231,15 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     setJetSelection: (image: any) => {
+      const { currentImages } = get();
+      
+      // Reordenar las imágenes aleatoriamente para evitar que los votantes
+      // puedan deducir la posición de la imagen elegida por el JET
+      const shuffledImages = [...currentImages].sort(() => 0.5 - Math.random());
+      
       set({
         jetSelection: image,
+        currentImages: shuffledImages, // Imágenes reordenadas
         gamePhase: 'guessing',
       });
     },

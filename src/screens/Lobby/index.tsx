@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator } from 'react-native';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStore, PLAYER_COLORS } from '../../store/gameStore';
 import { Feather } from '@expo/vector-icons';
 import Animated, { Layout, Easing, FadeInUp, FadeOutDown } from 'react-native-reanimated';
 import SafeAreaWrapper from '../../components/SafeAreaWrapper';
 
 const LobbyScreen = ({ navigation }: { navigation: any }) => {
-  const { players, addPlayer, removePlayer, startGame, gamePhase, isLoading } = useGameStore();
+  const { players, addPlayer, removePlayer, updatePlayerColor, startGame, gamePhase, isLoading } = useGameStore();
   const [playerName, setPlayerName] = useState('');
+  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (gamePhase === 'turn_selection') {
@@ -24,11 +26,30 @@ const LobbyScreen = ({ navigation }: { navigation: any }) => {
 
   const canStartGame = players.length >= 2;
 
-  // Avatares de cerebros/monitos
-  const avatars = ['🧠', '👾', '🤖', '🐵', '🎭', '🎪', '🎨', '🎯', '🎲', '🎮'];
-  
-  const getPlayerAvatar = (index: number) => {
-    return avatars[index % avatars.length];
+  // Función para obtener el color del jugador
+  const getPlayerColor = (player: any) => {
+    return player.color || '#5D5FEF'; // Color por defecto si no tiene
+  };
+
+  // Función para abrir el selector de colores
+  const openColorPicker = (playerId: string) => {
+    setSelectedPlayerId(playerId);
+    setColorPickerVisible(true);
+  };
+
+  // Función para cambiar el color de un jugador
+  const changePlayerColor = (newColor: string) => {
+    if (selectedPlayerId) {
+      updatePlayerColor(selectedPlayerId, newColor);
+    }
+    setColorPickerVisible(false);
+    setSelectedPlayerId(null);
+  };
+
+  // Obtener colores disponibles (no usados por otros jugadores)
+  const getAvailableColors = () => {
+    const usedColors = players.map(p => p.color);
+    return PLAYER_COLORS.filter(color => !usedColors.includes(color));
   };
 
   return (
@@ -44,7 +65,7 @@ const LobbyScreen = ({ navigation }: { navigation: any }) => {
         >
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text style={styles.loadingText}>Preparando la partida...</Text>
+            <Text style={styles.loadingText}>Cargando...</Text>
           </View>
         </Modal>
 
@@ -82,7 +103,13 @@ const LobbyScreen = ({ navigation }: { navigation: any }) => {
             >
               <View style={styles.playerItem}>
                 <View style={styles.playerInfo}>
-                  <Text style={styles.playerAvatar}>{getPlayerAvatar(index)}</Text>
+                  <TouchableOpacity 
+                    style={[styles.playerColorCircle, { backgroundColor: getPlayerColor(item) }]}
+                    onPress={() => openColorPicker(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="edit-2" size={12} color="white" style={styles.colorEditIcon} />
+                  </TouchableOpacity>
                   <Text style={styles.playerName}>{item.name}</Text>
                 </View>
                 <TouchableOpacity onPress={() => removePlayer(item.id)} style={styles.removeButton}>
@@ -103,6 +130,38 @@ const LobbyScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.startButtonText}>Comenzar Juego</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
+
+      {/* Modal de selección de colores */}
+      <Modal
+        visible={colorPickerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setColorPickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.colorPickerModal}>
+            <Text style={styles.colorPickerTitle}>Elige un color</Text>
+            <View style={styles.colorGrid}>
+              {getAvailableColors().map((color, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.colorOption, { backgroundColor: color }]}
+                  onPress={() => changePlayerColor(color)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="check" size={16} color="white" style={styles.colorCheckIcon} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setColorPickerVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaWrapper>
   );
 };
@@ -172,9 +231,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  playerAvatar: {
-    fontSize: 24,
+  playerColorCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorEditIcon: {
+    opacity: 0.8,
   },
   playerName: {
     color: 'white',
@@ -223,6 +297,68 @@ const styles = StyleSheet.create({
     marginTop: 15,
     color: 'white',
     fontSize: 18,
+    fontFamily: 'Poppins-Bold',
+  },
+  // Estilos del modal de selección de colores
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorPickerModal: {
+    backgroundColor: '#2C3E50',
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  colorPickerTitle: {
+    fontSize: 20,
+    fontFamily: 'LuckiestGuy-Regular',
+    color: 'white',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  colorOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    margin: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  colorCheckIcon: {
+    opacity: 0.9,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontFamily: 'Poppins-Bold',
   },
 });

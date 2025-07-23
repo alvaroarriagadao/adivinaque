@@ -4,12 +4,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { enableScreens } from 'react-native-screens';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useSoundManager } from './src/store/useSoundManager';
 import { useFonts } from 'expo-font';
 import { View, StyleSheet } from 'react-native';
 import { useGameStore } from './src/store/gameStore';
 import * as SplashScreen from 'expo-splash-screen';
+
+// Habilitar screens nativo ANTES de cualquier renderizado
+enableScreens();
 
 export default function App() {
   useSoundManager();
@@ -22,19 +26,30 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Evita que el splash screen nativo se oculte automáticamente
-    SplashScreen.preventAutoHideAsync();
-    
-    console.log('📱 App iniciando, inicializando assets...');
-    initializeAssets();
+    const prepare = async () => {
+      try {
+        // Evita que el splash screen nativo se oculte automáticamente
+        await SplashScreen.preventAutoHideAsync();
+        console.log('📱 App iniciando, inicializando assets...');
+        await initializeAssets();
+      } catch (e) {
+        console.warn('Error durante la inicialización:', e);
+      }
+    };
+
+    prepare();
   }, []);
 
   // Función para ocultar el splash screen
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded && gamePhase !== 'initializing') {
-      // Oculta el splash screen una vez que todo está listo
-      await SplashScreen.hideAsync();
-      console.log('✅ Todo listo, ocultando splash screen.');
+      try {
+        // Oculta el splash screen una vez que todo está listo
+        await SplashScreen.hideAsync();
+        console.log('✅ Todo listo, ocultando splash screen.');
+      } catch (e) {
+        console.warn('Error ocultando splash screen:', e);
+      }
     }
   }, [fontsLoaded, gamePhase]);
 
@@ -61,6 +76,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E2A3E', // Fondo consistente
+    backgroundColor: '#1E2A3E',
   },
 });

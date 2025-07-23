@@ -1,11 +1,142 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { useGameStore } from '../../store/gameStore';
+import { getOptimizedBackgroundColor } from '../../utils/textFormatters';
 import { Feather } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeIn, ZoomIn, SlideInUp, SlideInLeft, SlideInRight, withRepeat, withSequence, withTiming, withDelay, useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import AnimatedButton from '../../components/AnimatedButton';
 import SafeAreaWrapper from '../../components/SafeAreaWrapper';
+
+// Componente para animar las medallas del podio
+const AnimatedMedal = ({ emoji, delay }: { emoji: string, delay: number }) => {
+  const scale = useSharedValue(0);
+  const rotation = useSharedValue(0);
+
+  React.useEffect(() => {
+    // Animación de entrada con escala
+    setTimeout(() => {
+      scale.value = withTiming(1, { duration: 600 });
+    }, delay);
+    
+    // Animación de rotación continua
+    rotation.value = withRepeat(
+      withSequence(
+        withTiming(5, { duration: 2000 }),
+        withTiming(-5, { duration: 2000 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+        { rotate: `${rotation.value}deg` }
+      ],
+    };
+  });
+
+  return (
+    <Animated.Text style={[styles.animatedMedal, animatedStyle]}>
+      {emoji}
+    </Animated.Text>
+  );
+};
+
+// Componente de serpentinas animadas
+const ConfettiAnimation = () => {
+  const confettiPieces = Array.from({ length: 40 }, (_, i) => i);
+  
+  const ConfettiPiece = ({ index }: { index: number }) => {
+    const translateY = useSharedValue(-50);
+    const translateX = useSharedValue(0);
+    const rotation = useSharedValue(0);
+    const opacity = useSharedValue(1);
+    
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#FF8A80', '#80CBC4', '#FFD700', '#FF69B4'];
+    const color = colors[index % colors.length];
+    
+    // Posición inicial aleatoria
+    const initialX = (index * 12) % 400;
+    const initialDelay = index * 30;
+
+    React.useEffect(() => {
+      const duration = 5000 + Math.random() * 3000;
+      
+      // Animación de caída
+      translateY.value = withDelay(
+        initialDelay,
+        withTiming(1000, { duration })
+      );
+      
+      // Movimiento lateral aleatorio
+      translateX.value = withDelay(
+        initialDelay,
+        withRepeat(
+          withSequence(
+            withTiming(80, { duration: 1000 }),
+            withTiming(-80, { duration: 1000 }),
+            withTiming(50, { duration: 1000 }),
+            withTiming(-50, { duration: 1000 })
+          ),
+          -1,
+          true
+        )
+      );
+      
+      // Rotación continua
+      rotation.value = withDelay(
+        initialDelay,
+        withRepeat(
+          withTiming(360, { duration: 2000 }),
+          -1,
+          false
+        )
+      );
+      
+      // Fade out al final
+      opacity.value = withDelay(
+        initialDelay + duration - 1000,
+        withTiming(0, { duration: 1000 })
+      );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          { translateY: translateY.value },
+          { translateX: translateX.value },
+          { rotate: `${rotation.value}deg` }
+        ],
+        opacity: opacity.value,
+      };
+    });
+
+    return (
+      <Animated.View 
+        style={[
+          styles.confettiPiece, 
+          { 
+            backgroundColor: color,
+            left: initialX,
+          },
+          animatedStyle
+        ]} 
+      />
+    );
+  };
+
+  return (
+    <View style={styles.confettiContainer}>
+      {confettiPieces.map((index) => (
+        <ConfettiPiece key={index} index={index} />
+      ))}
+    </View>
+  );
+};
 
 const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
   const { players, resetGame, playAgain } = useGameStore();
@@ -23,6 +154,11 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
 
   const titleText = winners.length > 1 ? "🎉 ¡Es un Empate! 🎉" : "🏆 ¡Juego Terminado! 🏆";
   const subtitleText = "🎊 Resultados Finales 🎊";
+
+  // Fondo gris oscuro fijo para la pantalla de resultados
+  const getBackgroundColor = () => {
+    return '#1E2A3E'; // Gris oscuro consistente
+  };
 
   const handlePlayAgain = () => {
     // Resetear el juego manteniendo los jugadores y comenzar inmediatamente
@@ -54,7 +190,7 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
   }
 
   return (
-    <SafeAreaWrapper backgroundColor="#1E2A3E">
+    <SafeAreaWrapper backgroundColor={getBackgroundColor()}>
       <TouchableOpacity style={styles.exitButton} onPress={handleBackToMenu}>
         <Text style={styles.exitButtonText}>← Salir</Text>
       </TouchableOpacity>
@@ -65,25 +201,38 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
         loop={false}
         style={styles.lottie}
       />
+      <ConfettiAnimation />
       <View style={styles.container}>
         <Animated.Text style={styles.title} entering={FadeInUp.duration(800)}>{titleText}</Animated.Text>
         <Animated.Text style={styles.subtitle} entering={FadeInUp.delay(200).duration(800)}>{subtitleText}</Animated.Text>
         
-        <View style={styles.podiumContainer}>
+        <Animated.View style={styles.podiumContainer} entering={SlideInUp.delay(400).duration(800)}>
             {podium.map((player, index) => {
               const isWinner = winners.some(w => w.id === player.id);
               const rank = podiumScores.indexOf(player.score); // Se calcula el rango real
               return (
-                <Animated.View key={player.id} entering={FadeInUp.delay(600 + index * 200).duration(800)}>
-                    <View key={player.id} style={[styles.podiumItem, isWinner && styles.winnerPodium]}>
-                        <Text style={styles.podiumEmoji}>{getPodiumEmoji(rank)}</Text>
-                        <Text style={styles.podiumName}>{rank + 1}. {player.name}</Text>
-                        <Text style={styles.podiumScore}>{player.score} pts</Text>
-                    </View>
+                <Animated.View 
+                  key={player.id} 
+                  entering={FadeInUp.delay(600 + index * 200).duration(800)}
+                  style={[styles.podiumItem, isWinner && styles.winnerPodium]}
+                >
+                    <AnimatedMedal emoji={getPodiumEmoji(rank)} delay={800 + index * 200} />
+                    <Animated.Text 
+                      style={styles.podiumName}
+                      entering={SlideInLeft.delay(1000 + index * 200).duration(600)}
+                    >
+                      {rank + 1}. {player.name}
+                    </Animated.Text>
+                    <Animated.Text 
+                      style={styles.podiumScore}
+                      entering={SlideInRight.delay(1200 + index * 200).duration(600)}
+                    >
+                      {player.score} pts
+                    </Animated.Text>
                 </Animated.View>
               );
             })}
-        </View>
+        </Animated.View>
 
         <FlatList
           data={rest}
@@ -97,10 +246,10 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
               </View>
             )
           }}
-          style={{width: '100%', marginTop: 20}}
+          style={{width: '100%', marginTop: 20, maxHeight: 100}}
         />
 
-        <View style={styles.actionButtons}>
+        <Animated.View style={styles.actionButtons} entering={SlideInUp.delay(1600).duration(800)}>
           <AnimatedButton
             text="🎮 Jugar otra vez"
             onPress={handlePlayAgain}
@@ -113,7 +262,7 @@ const FinalResultsScreen = ({ navigation }: { navigation: any }) => {
             style={styles.button}
             textStyle={styles.buttonText}
           />
-        </View>
+        </Animated.View>
       </View>
     </SafeAreaWrapper>
   );
@@ -124,7 +273,7 @@ const styles = StyleSheet.create({
       position: 'absolute', 
       top: 45, // Ajustado para Android
       left: 20, 
-      zIndex: 2,
+      zIndex: 3, // Por encima del overlay y contenido
       backgroundColor: 'rgba(255, 255, 255, 0.2)',
       paddingHorizontal: 15,
       paddingVertical: 8,
@@ -140,7 +289,7 @@ const styles = StyleSheet.create({
       flex: 1, 
       padding: 20, 
       alignItems: 'center', 
-      zIndex: 1, 
+      zIndex: 2, // Para aparecer por encima del overlay de contraste
       paddingTop: 80,
       paddingBottom: 20, // Espacio adicional para Android
     },
@@ -178,6 +327,10 @@ const styles = StyleSheet.create({
         fontSize: 32,
         marginRight: 10,
     },
+    animatedMedal: {
+        fontSize: 32,
+        marginRight: 10,
+    },
     podiumName: { 
       flex: 1, 
       fontSize: 18, 
@@ -207,6 +360,7 @@ const styles = StyleSheet.create({
       fontSize: 16, 
       fontFamily: 'Poppins-Bold' 
     },
+
     actionButtons: { 
       width: '100%', 
       marginTop: 20,
@@ -224,6 +378,23 @@ const styles = StyleSheet.create({
       color: 'white', 
       fontSize: 16, 
       fontFamily: 'LuckiestGuy-Regular' 
+    },
+    // Estilos para las serpentinas/confeti
+    confettiContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1,
+        pointerEvents: 'none',
+    },
+    confettiPiece: {
+        position: 'absolute',
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        top: -40,
     },
 });
 

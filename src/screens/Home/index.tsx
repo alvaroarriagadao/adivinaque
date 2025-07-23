@@ -90,30 +90,33 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
           />
           
           <View style={styles.buttonsContainer}>
-            <Animated.View entering={FadeInDown.delay(200).duration(800).springify()}>
-              <AnimatedButton
-                text="Jugar"
-                onPress={() => navigation.navigate('Lobby')}
-                style={styles.playButton}
-                textStyle={styles.playButtonText}
-              />
-            </Animated.View>
-            <Animated.View entering={FadeInDown.delay(400).duration(800).springify()}>
-              <AnimatedButton
-                text="Reglas"
-                onPress={() => navigation.navigate('Rules')}
-                style={styles.rulesButton}
-                textStyle={styles.buttonText}
-              />
-            </Animated.View>
-             <Animated.View entering={FadeInDown.delay(600).duration(800).springify()}>
-              <AnimatedButton
-                text="Salir"
-                onPress={handleExit}
-                style={styles.exitButton}
-                textStyle={styles.buttonText}
-              />
-            </Animated.View>
+            <AnimatedButton
+              text="Jugar"
+              onPress={() => {
+                console.log('🎮 Botón Jugar presionado');
+                navigation.navigate('Lobby');
+              }}
+              style={styles.playButton}
+              textStyle={styles.playButtonText}
+            />
+            <AnimatedButton
+              text="Reglas"
+              onPress={() => {
+                console.log('📖 Botón Reglas presionado');
+                navigation.navigate('Rules');
+              }}
+              style={styles.rulesButton}
+              textStyle={styles.buttonText}
+            />
+            <AnimatedButton
+              text="Salir"
+              onPress={() => {
+                console.log('🚪 Botón Salir presionado');
+                handleExit();
+              }}
+              style={styles.exitButton}
+              textStyle={styles.buttonText}
+            />
           </View>
         </View>
       </SafeAreaWrapper>
@@ -132,17 +135,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: Platform.OS === 'android' ? 'space-between' : 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 20, // Espacio adicional para Android
+    paddingBottom: Platform.OS === 'android' ? 40 : 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 0,
   },
   titleContainer: {
     alignItems: 'center',
   },
   title: {
     fontFamily: 'LuckiestGuy-Regular',
-    fontSize: 64,
+    fontSize: Platform.OS === 'android' ? 56 : 64,
     color: 'white',
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -150,21 +154,22 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   subtitle: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 18,
+    fontFamily: 'Poppins-Bold',
+    fontSize: Platform.OS === 'android' ? 18 : 18,
     color: '#FFF813',
-    marginTop: 8,
+    marginTop: Platform.OS === 'android' ? 6 : 8,
     fontWeight: '600',
-    marginBottom: 20,
+    marginBottom: Platform.OS === 'android' ? 15 : 20,
   },
   lottie: {
-    width: 250,
-    height: 250,
-    marginBottom: 20,
+    width: Platform.OS === 'android' ? 280 : 320,
+    height: Platform.OS === 'android' ? 280 : 320,
+    marginBottom: Platform.OS === 'android' ? 10 : 20,
   },
   buttonsContainer: {
     width: '100%',
-    maxWidth: 300,
+    maxWidth: Platform.OS === 'android' ? 280 : 300,
+    marginTop: Platform.OS === 'android' ? 0 : 'auto',
   },
   button: {
     paddingVertical: 15,
@@ -183,8 +188,8 @@ const styles = StyleSheet.create({
   },
   playButton: { backgroundColor: '#4CAF50' },
   playButtonText: { color: 'white' },
-  rulesButton: { backgroundColor: '#FDB813' },
-  exitButton: { backgroundColor: '#607D8B' },
+  rulesButton: { backgroundColor: '#2196F3' },
+  exitButton: { backgroundColor: '#F44336' },
   buttonText: { 
     color: 'white',
     fontFamily: 'Poppins-Bold',
