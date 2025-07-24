@@ -44,6 +44,7 @@ interface GameState {
   // Asset Management State
   allConcepts: string[]; // Todos los conceptos cargados desde Firebase
   conceptImageCache: Record<string, string[]>; // Cache para las URLs de imágenes
+  usedConcepts: string[]; // Conceptos que ya han aparecido en la partida actual
   
   // Current Round State
   currentConcept: string | null;
@@ -79,6 +80,7 @@ const initialState = {
   isLoading: true,
   allConcepts: [],
   conceptImageCache: {},
+  usedConcepts: [],
   currentConcept: null,
   currentImages: [],
   jetSelection: null,
@@ -94,17 +96,33 @@ export const useGameStore = create<GameState>((set, get) => {
 
   // Obtiene un concepto aleatorio que no sea el actual.
   const getNewRandomConcept = (): string => {
-    const { allConcepts, currentConcept } = get();
+    const { allConcepts, currentConcept, usedConcepts } = get();
     if (allConcepts.length === 0) return '';
     if (allConcepts.length === 1) return allConcepts[0];
 
-    let availableConcepts = allConcepts.filter(c => c !== currentConcept);
+    // Filtrar conceptos que no han sido usados en esta partida
+    let availableConcepts = allConcepts.filter(c => !usedConcepts.includes(c));
+
+    // Si todos los conceptos ya se usaron, se resetea la lista de usados
+    // y se permite que cualquiera pueda ser elegido de nuevo.
     if (availableConcepts.length === 0) {
-      availableConcepts = allConcepts; // Fallback si solo hay un concepto
+      console.warn("Todos los conceptos han sido utilizados. Reiniciando la lista de conceptos disponibles.");
+      set({ usedConcepts: [] }); // Resetear conceptos usados
+      availableConcepts = allConcepts; // Usar todos los conceptos de nuevo
+    }
+
+    // Excluir el concepto actual si es posible
+    if (availableConcepts.length > 1) {
+      availableConcepts = availableConcepts.filter(c => c !== currentConcept);
     }
     
     const randomIndex = Math.floor(Math.random() * availableConcepts.length);
-    return availableConcepts[randomIndex];
+    const newConcept = availableConcepts[randomIndex];
+
+    // Añadir el nuevo concepto a la lista de usados
+    set(state => ({ usedConcepts: [...state.usedConcepts, newConcept] }));
+
+    return newConcept;
   };
   
   // Baraja un array y toma los primeros 'count' elementos.
@@ -227,6 +245,7 @@ export const useGameStore = create<GameState>((set, get) => {
         turnCount: 1,
         totalTurns: players.length * roundsPerPlayer,
         isLoading: false, // Desactivar la carga al final
+        usedConcepts: [newConcept],
       });
     },
 
@@ -308,6 +327,7 @@ export const useGameStore = create<GameState>((set, get) => {
         isLoading: false,
         allConcepts: get().allConcepts, // Conserva los conceptos ya cargados
         conceptImageCache: get().conceptImageCache, // Conserva el cache
+        usedConcepts: [], // Limpiar conceptos usados
       });
     },
 
@@ -329,6 +349,7 @@ export const useGameStore = create<GameState>((set, get) => {
         turnCount: 1,
         totalTurns: players.length * roundsPerPlayer,
         isLoading: false,
+        usedConcepts: [newConcept], // Iniciar con el primer concepto
       });
     },
 

@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Vibration, Modal, Pressable, Platform } from 'react-native';
 import { useGameStore } from '../../store/gameStore';
 import { formatConceptName, getOptimizedBackgroundColor } from '../../utils/textFormatters';
 import { Feather } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { ZoomIn, ZoomOut, useSharedValue, useAnimatedStyle, withTiming, runOnJS, withSequence } from 'react-native-reanimated';
 import AudioToggle from '../../components/AudioToggle';
 import SafeAreaWrapper from '../../components/SafeAreaWrapper';
+import { Audio } from 'expo-av';
 
 // Componente de Skeleton Loading para las imágenes
 const ImageSkeleton = () => {
   const opacity = useSharedValue(0.3);
 
   React.useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.7, { duration: 800 }),
-        withTiming(0.3, { duration: 800 })
-      ),
-      -1,
-      true
+    opacity.value = withSequence(
+      withTiming(0.7, { duration: 800 }),
+      withTiming(0.3, { duration: 800 })
     );
   }, []);
 
@@ -40,15 +37,48 @@ const GuessingScreen = () => {
     players, jetIndex, currentConcept, currentImages, guesses, 
     addGuess, turnCount, totalTurns
   } = useGameStore();
-  
-  const [selectedImage, setSelectedImage] = useState<any | null>(null);
-  
   const jet = players[jetIndex];
   
+  const [selectedImage, setSelectedImage] = useState<any | null>(null);
+  const [showTurnOverlay, setShowTurnOverlay] = useState(true);
+  const [overlayKey, setOverlayKey] = useState(0); // Para forzar re-render
+  const [overlayVisible, setOverlayVisible] = useState(true);
+  const overlayScale = useSharedValue(1);
+  const overlayOpacity = useSharedValue(1);
+
   // Determinar quién debe adivinar
   const guessingPlayerIndex = guesses.length;
   const playersExceptJet = players.filter((_, index) => index !== jetIndex);
   const currentGuesser = playersExceptJet[guessingPlayerIndex];
+
+  // Mostrar overlay cada vez que cambia el votante
+  React.useEffect(() => {
+    setShowTurnOverlay(true);
+    setOverlayVisible(true);
+    setOverlayKey((k) => k + 1);
+    overlayScale.value = 1;
+    overlayOpacity.value = 1;
+    if (Platform.OS !== 'web') {
+      Vibration.vibrate(200);
+    }
+  }, [guessingPlayerIndex]);
+
+  // Animación de cierre del overlay
+  const handleCloseOverlay = () => {
+    overlayScale.value = withTiming(0.7, { duration: 500 });
+    overlayOpacity.value = withTiming(0, { duration: 500 }, (finished) => {
+      if (finished) {
+        runOnJS(setShowTurnOverlay)(false);
+        runOnJS(setOverlayVisible)(false);
+        // runOnJS(playTransitionSound)();
+      }
+    });
+  };
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: overlayScale.value }],
+    opacity: overlayOpacity.value,
+  }));
 
   const handleSelectImage = (image: any) => {
     // Si la imagen ya está seleccionada, la deseleccionamos
@@ -77,6 +107,32 @@ const GuessingScreen = () => {
 
   return (
     <SafeAreaWrapper backgroundColor={currentGuesserColor}>
+      {/* Overlay de turno para votante */}
+      <Modal
+        visible={showTurnOverlay}
+        animationType="fade"
+        transparent={true}
+        key={overlayKey}
+      >
+        <Pressable
+          style={styles.turnOverlayContainer}
+          onPress={handleCloseOverlay}
+        >
+          {overlayVisible && (
+            <Animated.View style={[styles.turnOverlayBox, overlayAnimatedStyle]} entering={ZoomIn.duration(400)} exiting={ZoomOut.duration(400)}>
+              <Text style={styles.turnOverlayIcon}>🤔</Text>
+              <Text style={styles.turnOverlayTitle}>Es el turno de</Text>
+              <Text style={styles.turnOverlayName}>{currentGuesser.name}</Text>
+              <Text style={styles.turnOverlayInstruction}>
+                Pasa el dispositivo a <Text style={{fontWeight:'bold', color: '#007A3D', textDecorationLine: 'underline'}}>{currentGuesser.name}</Text> y toca para comenzar
+              </Text>
+              <View style={styles.turnOverlayButton}>
+                <Text style={styles.turnOverlayButtonText}>¡Comenzar turno!</Text>
+              </View>
+            </Animated.View>
+          )}
+        </Pressable>
+      </Modal>
       <View style={styles.container}>
         <View style={styles.audioButton}>
           <AudioToggle />
@@ -84,11 +140,10 @@ const GuessingScreen = () => {
         
         <View style={styles.headerSection}>
           <Text style={styles.roundIndicator}>Ronda {currentRound} de {totalRounds}</Text>
-          
-          {/* Badge simple del jugador actual */}
-          <View style={styles.playerTurnBadge}>
-            <Text style={styles.playerTurnText}>¡TU TURNO! {currentGuesser.name}</Text>
-          </View>
+          {/* Badge grande del votante */}
+          <Animated.View style={styles.playerTurnBadgeBig} entering={showTurnOverlay ? undefined : ZoomIn.duration(500).springify()}>
+            <Text style={styles.playerTurnTextBig}>¡TU TURNO! {currentGuesser.name}</Text>
+          </Animated.View>
           <View style={styles.questionContainer}>
             <Text style={styles.question}>
               Adivina qué <Text style={styles.conceptName}>{formatConceptName(currentConcept)}</Text> eligió <Text style={{color: '#FDB813'}}>{jet.name}</Text>
@@ -279,6 +334,108 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontFamily: 'LuckiestGuy-Regular',
+  },
+  // Badge grande y animado
+  playerTurnBadgeBig: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 30,
+    marginBottom: 15,
+    backgroundColor: '#FFD700',
+    borderWidth: 2,
+    borderColor: '#000',
+    elevation: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  playerTurnTextBig: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 24,
+    color: '#002800',
+    textAlign: 'center',
+    textShadowColor: 'rgba(255,255,255,0.7)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 1,
+  },
+  // Overlay de turno
+  turnOverlayContainer: {
+    flex: 1,
+    backgroundColor: '#FFE14D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  turnOverlayBox: {
+    backgroundColor: '#FFF',
+    borderColor: '#000',
+    borderWidth: 5,
+    borderRadius: 32,
+    paddingVertical: 44,
+    paddingHorizontal: 34,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  turnOverlayIcon: {
+    fontSize: 60,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  turnOverlayTitle: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 32,
+    color: '#014421',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(255,255,255,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  turnOverlayName: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 38,
+    color: '#014421',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(255,255,255,0.7)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  turnOverlayInstruction: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 18,
+    color: '#111',
+    textAlign: 'center',
+    marginBottom: 24,
+    marginTop: 4,
+  },
+  turnOverlayButton: {
+    backgroundColor: '#014421',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  turnOverlayButtonText: {
+    color: '#FFE14D',
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 22,
+    textAlign: 'center',
+    letterSpacing: 1,
   },
 });
 

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Vibration, Modal, Pressable, Platform } from 'react-native';
 import { useGameStore } from '../../store/gameStore';
 import { formatConceptName, getOptimizedBackgroundColor } from '../../utils/textFormatters';
 import { Feather } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeOut, Layout, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, Layout, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, ZoomIn, ZoomOut, runOnJS } from 'react-native-reanimated';
 import AudioToggle from '../../components/AudioToggle';
 import SafeAreaWrapper from '../../components/SafeAreaWrapper';
+import { Audio } from 'expo-av';
 
 // Componente de Skeleton Loading para las imágenes
 const ImageSkeleton = () => {
@@ -44,8 +45,71 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
   } = useGameStore();
   
   const [selectedImage, setSelectedImage] = useState<any | null>(null);
-  
+  const [showTurnOverlay, setShowTurnOverlay] = useState(true);
+  const [overlayKey, setOverlayKey] = useState(0); // Para forzar re-render
+  const [overlayVisible, setOverlayVisible] = useState(true);
+  const overlayScale = useSharedValue(1);
+  const overlayOpacity = useSharedValue(1);
   const currentPlayer = players[jetIndex];
+  const [shuffledImages, setShuffledImages] = useState<any[]>([]);
+
+  function shuffleArray(array: any[]) {
+    return array
+      .map(value => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
+  }
+
+  useEffect(() => {
+    if (currentImages && currentImages.length > 0) {
+      setShuffledImages(shuffleArray(currentImages));
+    }
+  }, [currentImages, jetIndex, turnCount]);
+
+  // Sonido de transición (opcional)
+  // async function playTransitionSound() {
+  //   try {
+  //     const { sound } = await Audio.Sound.createAsync(
+  //       require('../../assets/sounds/pop.mp3'),
+  //       { shouldPlay: true }
+  //     );
+  //     // No mantener en memoria
+  //     sound.setOnPlaybackStatusUpdate((status) => {
+  //       if (status.isLoaded && status.didJustFinish) {
+  //         sound.unloadAsync();
+  //       }
+  //     });
+  //   } catch {}
+  // }
+
+  // Mostrar overlay cada vez que cambia el turno
+  React.useEffect(() => {
+    setShowTurnOverlay(true);
+    setOverlayVisible(true);
+    setOverlayKey((k) => k + 1);
+    overlayScale.value = 1;
+    overlayOpacity.value = 1;
+    if (Platform.OS !== 'web') {
+      Vibration.vibrate(200);
+    }
+  }, [jetIndex]);
+
+  // Animación de cierre del overlay
+  const handleCloseOverlay = () => {
+    overlayScale.value = withTiming(0.7, { duration: 500 });
+    overlayOpacity.value = withTiming(0, { duration: 500 }, (finished) => {
+      if (finished) {
+        runOnJS(setShowTurnOverlay)(false);
+        runOnJS(setOverlayVisible)(false);
+        // runOnJS(playTransitionSound)();
+      }
+    });
+  };
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: overlayScale.value }],
+    opacity: overlayOpacity.value,
+  }));
 
   const handleSelectImage = (image: any) => {
     // Si la imagen ya está seleccionada, la deseleccionamos
@@ -97,6 +161,30 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
 
   return (
     <SafeAreaWrapper backgroundColor={currentPlayerColor}>
+      {/* Overlay de turno */}
+      <Modal
+        visible={showTurnOverlay}
+        animationType="fade"
+        transparent={true}
+        key={overlayKey}
+      >
+        <Pressable
+          style={styles.turnOverlayContainer}
+          onPress={handleCloseOverlay}
+        >
+          {overlayVisible && (
+            <Animated.View style={[styles.turnOverlayBox, overlayAnimatedStyle]} entering={ZoomIn.duration(400)} exiting={ZoomOut.duration(400)}>
+            <Text style={styles.turnOverlayIcon}>🎯</Text>
+            <Text style={styles.turnOverlayTitle}>¡ES TU TURNO!</Text>
+            <Text style={styles.turnOverlayName}>{currentPlayer.name}</Text>
+            <Text style={styles.turnOverlayInstruction}>Pasa el dispositivo a <Text style={{fontWeight:'bold'}}>{currentPlayer.name}</Text> y toca para comenzar</Text>
+            <View style={styles.turnOverlayButton}>
+              <Text style={styles.turnOverlayButtonText}>¡Comenzar turno!</Text>
+            </View>
+          </Animated.View>
+          )}
+        </Pressable>
+      </Modal>
       <View style={styles.container}>
         <TouchableOpacity style={styles.backButton} onPress={handleExit}>
             <Text style={styles.backButtonText}>← Salir</Text>
@@ -115,11 +203,13 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
               Ronda {currentRound} de {totalRounds}
             </Animated.Text>
             <Animated.View 
-              style={styles.playerTurnBadge}
-              entering={FadeIn.duration(600)}
+              style={styles.playerTurnBadgeBig}
+              entering={showTurnOverlay ? undefined : ZoomIn.duration(500).springify()}
               key={`badge-${currentPlayer.name}`}
             >
-              <Text style={styles.playerTurnText}>¡TU TURNO! {currentPlayer.name}</Text>
+              <Text style={styles.playerTurnTextBig}>
+                TURNO DE: <Text style={styles.playerNameHighlight}>{currentPlayer.name}</Text>
+              </Text>
             </Animated.View>
             <Animated.Text 
               style={styles.question}
@@ -131,9 +221,8 @@ const GameScreen = ({ navigation }: { navigation: any }) => {
           </View>
 
           <View style={styles.imageGrid}>
-            {currentImages.length > 0 ? (
-              // Mostrar imágenes cuando están cargadas
-              currentImages.map((img, index) => (
+            {shuffledImages.length > 0 ? (
+              shuffledImages.map((img, index) => (
                 <Animated.View 
                   key={index}
                   style={styles.imageWrapper}
@@ -432,6 +521,117 @@ const styles = StyleSheet.create({
     borderColor: '#FDB813',
     borderWidth: 4,
     transform: [{ scale: 1.02 }],
+  },
+  // Badge grande y animado
+  playerTurnBadgeBig: {
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 30,
+    marginBottom: 15,
+    backgroundColor: '#FFD700',
+    borderWidth: 2,
+    borderColor: '#000',
+    elevation: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  turnLabel: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 14,
+    color: 'black',
+    opacity: 0.6,
+    letterSpacing: 1,
+    marginBottom: -8,
+  },
+  turnPlayerName: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 30,
+    color: 'black',
+  },
+  turnOverlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  turnOverlayBox: {
+    backgroundColor: '#FFD700',
+    borderColor: '#000',
+    borderWidth: 4,
+    borderRadius: 30,
+    paddingVertical: 40,
+    paddingHorizontal: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  turnOverlayIcon: {
+    fontSize: 60,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  turnOverlayTitle: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 32,
+    color: '#002800',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  turnOverlayName: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 38,
+    color: '#014421',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(255,255,255,0.9)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  turnOverlayInstruction: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 18,
+    color: '#002800',
+    textAlign: 'center',
+    marginBottom: 24,
+    marginTop: 4,
+  },
+  turnOverlayButton: {
+    backgroundColor: '#002800',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  turnOverlayButtonText: {
+    color: '#FFD700',
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 20,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  playerTurnTextBig: {
+    fontFamily: 'LuckiestGuy-Regular',
+    fontSize: 20,
+    color: '#6E4A0C', // Marrón oscuro para el texto base
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  playerNameHighlight: {
+    color: 'black', // Negro sólido para el nombre, máximo contraste
   },
 });
 

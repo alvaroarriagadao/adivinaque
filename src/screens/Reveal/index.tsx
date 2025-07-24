@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
 import { useGameStore, Player, Guess } from '../../store/gameStore';
 import { getOptimizedBackgroundColor } from '../../utils/textFormatters';
 import { Feather } from '@expo/vector-icons';
@@ -52,6 +52,8 @@ const CelebrationIcon = () => {
   );
 };
 
+const { width: screenWidth } = Dimensions.get('window');
+
 // Componente de serpentinas animadas mejorado
 const ConfettiAnimation = () => {
   const confettiPieces = Array.from({ length: 50 }, (_, i) => i);
@@ -68,17 +70,22 @@ const ConfettiAnimation = () => {
     
     // Propiedades aleatorias para cada pieza
     const size = 6 + Math.random() * 8; // Tamaños variados entre 6-14px
-    const initialX = Math.random() * 400; // Posición inicial completamente aleatoria
+    const initialX = Math.random() * screenWidth; // Posición inicial completamente aleatoria
     const fallDuration = 4000 + Math.random() * 2000; // Duración equilibrada
     const swingAmplitude = 20 + Math.random() * 40; // Amplitud de balanceo variable
     const swingSpeed = 800 + Math.random() * 600; // Velocidad de balanceo variable
     const rotationSpeed = 1000 + Math.random() * 1000; // Velocidad de rotación variable
 
     React.useEffect(() => {
-      // Animación de caída muy lenta para que dure toda la pantalla
-      translateY.value = withTiming(1000, { 
-        duration: fallDuration,
-      });
+      // Eliminamos el retraso aleatorio para que la animación empiece al instante.
+      // Hacemos que la animación se repita para un efecto continuo.
+      translateY.value = withRepeat(
+        withTiming(1000, { 
+          duration: fallDuration,
+        }),
+        -1, // Repetir infinitamente
+        true // Revertir la animación para que suba y baje, creando un ciclo.
+      );
       
       // Movimiento de balanceo natural (como confeti real)
       translateX.value = withRepeat(
@@ -228,7 +235,7 @@ const RevealScreen = () => {
 
   return (
     <SafeAreaWrapper backgroundColor={jetColor}>
-      {canContinue && <ConfettiAnimation />}
+      <ConfettiAnimation />
       <View style={styles.container}>
         <View style={styles.audioButton}>
           <AudioToggle />

@@ -39,6 +39,12 @@ const RulesScreen = ({ navigation }: { navigation: any }) => {
             </Text>
           </View>
           <View style={styles.ruleSection}>
+            <Text style={styles.sectionTitle}>🔁 Cambios en el turno</Text>
+            <Text style={styles.sectionText}>
+              Durante tu turno puedes cambiar las imágenes o el concepto solo una vez, y no podrás volver atrás después de hacerlo.
+            </Text>
+          </View>
+          <View style={styles.ruleSection}>
             <Text style={styles.sectionTitle}>🎉 ¡A Jugar!</Text>
             <Text style={styles.sectionText}>
               ¡Quien acumule más puntos conoce mejor a sus amigos!
